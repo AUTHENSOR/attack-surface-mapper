@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authensor Attack Surface Mapper</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1a2e;
+    --bg-card: #16213e;
+    --bg-input: #0f0f23;
+    --gold: #C9A227;
+    --gold-dim: #8a6f1a;
+    --text: #e0e0e0;
+    --text-dim: #8888a0;
+    --border: #2a2a4a;
+    --critical: #e74c3c;
+    --high: #e67e22;
+    --medium: #f1c40f;
+    --low: #7f8c8d;
+    --info: #3498db;
+    --green: #2ecc71;
+    --radius: 8px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    font-size: 1.8rem;
+    color: var(--gold);
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+  }
+  header p {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+
+  .input-section { margin-bottom: 24px; }
+  .input-section label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--gold);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 320px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
+    font-size: 0.85rem;
+    padding: 16px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+  }
+  textarea:focus { border-color: var(--gold); }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--gold);
+    color: #1a1a2e;
+  }
+  .btn-primary:hover { background: #dbb42e; transform: translateY(-1px); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--gold);
+    border: 1px solid var(--gold-dim);
+  }
+  .btn-secondary:hover { background: rgba(201,162,39,0.1); }
+  .btn-safe {
+    background: transparent;
+    color: var(--green);
+    border: 1px solid rgba(46,204,113,0.4);
+  }
+  .btn-safe:hover { background: rgba(46,204,113,0.1); }
+
+  .error-msg {
+    background: rgba(231,76,60,0.15);
+    border: 1px solid var(--critical);
+    color: #e74c3c;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    margin-top: 12px;
+    font-size: 0.9rem;
+    display: none;
+  }
+
+  /* Results */
+  #results { display: none; }
+
+  .grade-banner {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 32px;
+    margin-bottom: 24px;
+  }
+  .grade-badge {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    border: 4px solid;
+  }
+  .grade-details h2 { font-size: 1.1rem; margin-bottom: 4px; }
+  .grade-details .score-num { font-size: 2rem; font-weight: 700; }
+  .grade-details .score-label { color: var(--text-dim); font-size: 0.85rem; }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .summary-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+  }
+  .summary-card .label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .summary-card .value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--gold);
+  }
+  .summary-card .detail {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .section-title {
+    font-size: 1rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 28px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .finding-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    border-left: 4px solid var(--low);
+  }
+  .finding-card[data-severity="critical"] { border-left-color: var(--critical); }
+  .finding-card[data-severity="high"] { border-left-color: var(--high); }
+  .finding-card[data-severity="medium"] { border-left-color: var(--medium); }
+  .finding-card[data-severity="low"] { border-left-color: var(--low); }
+  .finding-card[data-severity="info"] { border-left-color: var(--info); }
+
+  .finding-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .severity-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .severity-badge.critical { background: var(--critical); color: #fff; }
+  .severity-badge.high { background: var(--high); color: #fff; }
+  .severity-badge.medium { background: var(--medium); color: #1a1a2e; }
+  .severity-badge.low { background: var(--low); color: #fff; }
+  .severity-badge.info { background: var(--info); color: #fff; }
+
+  .finding-title { font-weight: 600; font-size: 0.95rem; }
+  .finding-id { color: var(--text-dim); font-size: 0.75rem; font-family: monospace; }
+  .finding-desc { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 8px; line-height: 1.5; }
+  .finding-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+  }
+  .finding-meta span { color: var(--text-dim); }
+  .finding-meta .owasp-tag {
+    background: rgba(201,162,39,0.15);
+    color: var(--gold);
+    padding: 1px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.75rem;
+  }
+  .finding-remediation {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(46,204,113,0.08);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #8ddba6;
+    border-left: 3px solid var(--green);
+  }
+  .finding-remediation strong { color: var(--green); }
+
+  .dataflow-box {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+  .dataflow-line { white-space: nowrap; }
+  .df-source { color: var(--info); }
+  .df-arrow { color: var(--text-dim); }
+  .df-dest { color: var(--high); }
+  .df-type { color: var(--text-dim); font-style: italic; }
+  .df-risk-critical { color: var(--critical); font-weight: 700; }
+  .df-risk-high { color: var(--high); font-weight: 700; }
+  .df-risk-medium { color: var(--medium); }
+  .df-risk-low { color: var(--low); }
+
+  .caps-list {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .cap-tag {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(201,162,39,0.12);
+    color: var(--gold);
+    font-family: monospace;
+  }
+
+  .critical-paths-list {
+    list-style: none;
+    padding: 0;
+  }
+  .critical-paths-list li {
+    font-family: monospace;
+    font-size: 0.82rem;
+    padding: 4px 0;
+    color: var(--critical);
+  }
+  .critical-paths-list li::before {
+    content: "!! ";
+    font-weight: 700;
+  }
+
+  .no-findings {
+    text-align: center;
+    padding: 32px;
+    color: var(--green);
+    font-size: 1.1rem;
+  }
+
+  footer {
+    text-align: center;
+    padding: 24px 0;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+  footer a { color: var(--gold); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .grade-banner { flex-direction: column; text-align: center; padding: 20px 16px; }
+    .grade-badge { width: 80px; height: 80px; font-size: 2.4rem; }
+    textarea { min-height: 220px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Authensor Attack Surface Mapper</h1>
+    <p>Paste an AI agent configuration and scan for security vulnerabilities</p>
+  </header>
+
+  <div class="input-section">
+    <label for="config-input">Agent Configuration JSON</label>
+    <textarea id="config-input" spellcheck="false" placeholder='Paste your agent config JSON here or click "Try Example" below...'></textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="runScan()">Scan</button>
+      <button class="btn btn-secondary" onclick="loadDangerousExample()">Try Example</button>
+      <button class="btn btn-safe" onclick="loadSafeExample()">Try Safe Example</button>
+    </div>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <div id="results">
+    <div class="grade-banner" id="grade-banner">
+      <div class="grade-badge" id="grade-badge"></div>
+      <div class="grade-details">
+        <h2 id="agent-name"></h2>
+        <div><span class="score-num" id="score-num"></span> <span class="score-label">/ 100 Risk Score</span></div>
+      </div>
+    </div>
+
+    <div class="summary-grid" id="summary-grid"></div>
+
+    <h3 class="section-title">Findings (<span id="finding-count"></span>)</h3>
+    <div id="findings-list"></div>
+
+    <h3 class="section-title">Data Flow Diagram</h3>
+    <div class="dataflow-box" id="dataflow-box"></div>
+  </div>
+
+  <footer>
+    Powered by <a href="https://github.com/AUTHENSOR/authensor" target="_blank" rel="noopener">Authensor</a> &mdash; Open-source safety stack for AI agents
+  </footer>
+</div>
+
+<script>
+// ========================================================================
+// OWASP Agentic Security Index
+// ========================================================================
+const OWASP_AGENTIC = {
+  ASI01: { id: 'ASI01', name: 'Agent Goal Hijacking', description: 'Prompt injection or context manipulation redirects the agent to unintended goals.' },
+  ASI02: { id: 'ASI02', name: 'Tool Misuse', description: 'Agent uses tools in unintended or harmful ways, either through manipulation or misconfiguration.' },
+  ASI03: { id: 'ASI03', name: 'Identity & Privilege Abuse', description: 'Agent operates with excessive privileges or impersonates other identities.' },
+  ASI04: { id: 'ASI04', name: 'Supply Chain Vulnerabilities', description: 'Third-party tools, plugins, or MCP servers introduce security risks.' },
+  ASI05: { id: 'ASI05', name: 'Unexpected Code Execution', description: 'Agent executes arbitrary code without proper sandboxing or approval.' },
+  ASI06: { id: 'ASI06', name: 'Memory & Context Poisoning', description: 'Adversarial data injected into agent memory or context influences future decisions.' },
+  ASI07: { id: 'ASI07', name: 'Insecure Inter-Agent Communication', description: 'Multi-agent systems lack authentication or integrity checks between agents.' },
+  ASI08: { id: 'ASI08', name: 'Cascading Failures', description: 'Failure in one agent or tool propagates to cause system-wide failures.' },
+  ASI09: { id: 'ASI09', name: 'Human-Agent Trust Exploitation', description: 'Agent exploits human trust to bypass approval workflows or override safety controls.' },
+  ASI10: { id: 'ASI10', name: 'Rogue Agents', description: 'Agent operates outside defined boundaries without detection or kill-switch capability.' },
+};
+
+function getOwaspName(id) {
+  return OWASP_AGENTIC[id] ? OWASP_AGENTIC[id].name : id;
+}
+
+// ========================================================================
+// Risk Scorer
+// ========================================================================
+const SEVERITY_SCORES = { critical: 25, high: 15, medium: 8, low: 3, info: 0 };
+
+function calculateRiskScore(findings) {
+  const total = findings.reduce((sum, f) => sum + (SEVERITY_SCORES[f.severity] || 0), 0);
+  return Math.min(100, total);
+}
+
+function calculateGrade(score) {
+  if (score <= 15) return 'A';
+  if (score <= 35) return 'B';
+  if (score <= 55) return 'C';
+  if (score <= 75) return 'D';
+  return 'F';
+}
+
+function gradeColor(grade) {
+  switch (grade) {
+    case 'A': return '#2ecc71';
+    case 'B': return '#f1c40f';
+    case 'C': return '#e67e22';
+    case 'D': return '#e74c3c';
+    case 'F': return '#c0392b';
+    default: return '#7f8c8d';
+  }
+}
+
+// ========================================================================
+// Tool Analyzer
+// ========================================================================
+const DANGEROUS_COMBOS = [
+  {
+    caps: ['shell_execute', 'network_request'],
+    finding: {
+      severity: 'critical',
+      category: 'data-exfiltration',
+      title: 'Shell + network access enables data exfiltration',
+      description: 'A tool with both shell execution and network access can pipe arbitrary data to external endpoints.',
+      owaspMapping: 'ASI02',
+      remediation: 'Separate shell and network capabilities into distinct tools with individual approval requirements.',
+    },
+  },
+  {
+    caps: ['credential_access', 'network_request'],
+    finding: {
+      severity: 'critical',
+      category: 'credential-theft',
+      title: 'Credential access + network enables credential exfiltration',
+      description: 'Credentials can be read and sent to external endpoints in a single tool invocation.',
+      owaspMapping: 'ASI03',
+      remediation: 'Never combine credential access with network capabilities. Use separate tools with approval workflows.',
+    },
+  },
+  {
+    caps: ['file_read', 'network_request'],
+    finding: {
+      severity: 'high',
+      category: 'data-exfiltration',
+      title: 'File read + network enables file exfiltration',
+      description: 'Arbitrary files can be read and transmitted to external endpoints.',
+      owaspMapping: 'ASI02',
+      remediation: 'Restrict file read to specific directories. Add network egress allowlist.',
+    },
+  },
+  {
+    caps: ['shell_execute', 'file_delete'],
+    finding: {
+      severity: 'high',
+      category: 'destructive-action',
+      title: 'Shell + file delete enables destructive operations',
+      description: 'Combination allows recursive deletion, disk wiping, or system damage.',
+      owaspMapping: 'ASI02',
+      remediation: 'Require human approval for all destructive operations.',
+    },
+  },
+  {
+    caps: ['code_execute', 'system_config'],
+    finding: {
+      severity: 'critical',
+      category: 'privilege-escalation',
+      title: 'Code execution + system config enables privilege escalation',
+      description: 'Arbitrary code can modify system configuration, potentially escalating privileges.',
+      owaspMapping: 'ASI05',
+      remediation: 'Sandbox code execution. Never allow system config changes without multi-party approval.',
+    },
+  },
+  {
+    caps: ['payment_process', 'code_execute'],
+    finding: {
+      severity: 'critical',
+      category: 'financial-risk',
+      title: 'Payment + code execution enables unauthorized transactions',
+      description: 'Arbitrary code can trigger financial transactions without human oversight.',
+      owaspMapping: 'ASI02',
+      remediation: 'Always require human approval for payment operations. Never combine with code execution.',
+    },
+  },
+];
+
+const OVERLY_BROAD_PARAMS = [
+  { pattern: /command|cmd|shell|exec/i, severity: 'high', issue: 'Accepts arbitrary shell commands' },
+  { pattern: /url|endpoint|host/i, severity: 'medium', issue: 'Accepts arbitrary URLs/endpoints' },
+  { pattern: /query|sql/i, severity: 'high', issue: 'Accepts arbitrary database queries' },
+  { pattern: /path|file|directory/i, severity: 'medium', issue: 'Accepts arbitrary file paths' },
+  { pattern: /code|script|eval/i, severity: 'high', issue: 'Accepts arbitrary code for execution' },
+];
+
+function analyzeTools(tools) {
+  const findings = [];
+  let findingIdx = 0;
+
+  for (const tool of tools) {
+    // Check dangerous capability combinations within a single tool
+    for (const combo of DANGEROUS_COMBOS) {
+      if (combo.caps.every(c => tool.capabilities.includes(c))) {
+        findings.push({
+          ...combo.finding,
+          id: 'TOOL-' + String(++findingIdx).padStart(3, '0'),
+          tool: tool.name,
+        });
+      }
+    }
+
+    // Check overly broad parameters
+    if (tool.parameters) {
+      for (const paramName of Object.keys(tool.parameters)) {
+        for (const check of OVERLY_BROAD_PARAMS) {
+          if (check.pattern.test(paramName)) {
+            findings.push({
+              id: 'TOOL-' + String(++findingIdx).padStart(3, '0'),
+              severity: check.severity,
+              category: 'broad-parameters',
+              title: tool.name + ': ' + check.issue,
+              description: 'Parameter "' + paramName + '" in tool "' + tool.name + '" ' + check.issue.toLowerCase() + '. This could be exploited via prompt injection to execute unintended operations.',
+              tool: tool.name,
+              owaspMapping: 'ASI01',
+              remediation: 'Constrain the "' + paramName + '" parameter to an allowlist of permitted values.',
+            });
+          }
+        }
+      }
+    }
+
+    // Check for tools with too many capabilities (least privilege violation)
+    if (tool.capabilities.length >= 4) {
+      findings.push({
+        id: 'TOOL-' + String(++findingIdx).padStart(3, '0'),
+        severity: 'medium',
+        category: 'least-privilege',
+        title: tool.name + ': Too many capabilities (' + tool.capabilities.length + ')',
+        description: 'Tool "' + tool.name + '" has ' + tool.capabilities.length + ' capabilities. This violates the principle of least privilege and increases the blast radius if the tool is misused.',
+        tool: tool.name,
+        owaspMapping: 'ASI03',
+        remediation: 'Split into multiple focused tools, each with minimal required capabilities.',
+      });
+    }
+  }
+
+  return findings;
+}
+
+// ========================================================================
+// MCP Analyzer
+// ========================================================================
+const KNOWN_VULNERABLE_SERVERS = [
+  { pattern: /filesystem/i, issue: 'Filesystem server grants broad file access', severity: 'medium' },
+  { pattern: /everything/i, issue: 'Everything server exposes all capabilities', severity: 'critical' },
+  { pattern: /shell|terminal|exec/i, issue: 'Shell server enables arbitrary command execution', severity: 'critical' },
+  { pattern: /puppeteer|playwright|browser/i, issue: 'Browser server enables web interaction and data access', severity: 'high' },
+  { pattern: /database|postgres|mysql|sqlite/i, issue: 'Database server enables arbitrary queries', severity: 'high' },
+];
+
+function analyzeMCPServers(servers) {
+  const findings = [];
+  let idx = 0;
+
+  for (const server of servers) {
+    // Check transport security
+    if (server.transport === 'stdio') {
+      findings.push({
+        id: 'MCP-' + String(++idx).padStart(3, '0'),
+        severity: 'medium',
+        category: 'transport-security',
+        title: server.name + ': stdio transport has no authentication',
+        description: 'MCP server "' + server.name + '" uses stdio transport, which provides no authentication or authorization mechanism. Any process that can spawn the server can invoke its tools.',
+        tool: server.name,
+        owaspMapping: 'ASI03',
+        remediation: 'Use SSE or HTTP transport with token-based authentication, or place behind an Authensor MCP Gateway.',
+      });
+    }
+
+    // Check for known high-risk servers
+    const serverIdentifier = (server.name || '') + ' ' + (server.command || '') + ' ' + (server.url || '');
+    for (const vuln of KNOWN_VULNERABLE_SERVERS) {
+      if (vuln.pattern.test(serverIdentifier)) {
+        findings.push({
+          id: 'MCP-' + String(++idx).padStart(3, '0'),
+          severity: vuln.severity,
+          category: 'known-risk',
+          title: server.name + ': ' + vuln.issue,
+          description: 'MCP server "' + server.name + '" matches a known high-risk server pattern. ' + vuln.issue + '.',
+          tool: server.name,
+          owaspMapping: 'ASI04',
+          remediation: 'Place behind an Authensor MCP Gateway with restrictive policies. Limit tool access to required operations only.',
+        });
+      }
+    }
+
+    // Check for exposed environment variables
+    if (server.env) {
+      const sensitivePatterns = [/key/i, /secret/i, /token/i, /password/i, /credential/i];
+      for (const envKey of Object.keys(server.env)) {
+        if (sensitivePatterns.some(p => p.test(envKey))) {
+          findings.push({
+            id: 'MCP-' + String(++idx).padStart(3, '0'),
+            severity: 'high',
+            category: 'secret-exposure',
+            title: server.name + ': Sensitive env var "' + envKey + '" passed to MCP server',
+            description: 'Environment variable "' + envKey + '" appears to contain sensitive data and is passed to MCP server "' + server.name + '". If the server is compromised or has logging enabled, this credential could be leaked.',
+            tool: server.name,
+            owaspMapping: 'ASI04',
+            remediation: 'Use a secrets manager. Never pass credentials directly in MCP server configuration.',
+          });
+        }
+      }
+    }
+
+    // Check for missing tool restrictions
+    if (!server.tools || server.tools.length === 0) {
+      findings.push({
+        id: 'MCP-' + String(++idx).padStart(3, '0'),
+        severity: 'medium',
+        category: 'unrestricted-access',
+        title: server.name + ': No tool allowlist configured',
+        description: 'MCP server "' + server.name + '" has no tool allowlist. All tools exposed by the server are available to the agent.',
+        tool: server.name,
+        owaspMapping: 'ASI02',
+        remediation: 'Configure an explicit tool allowlist to limit available tools to those required.',
+      });
+    }
+  }
+
+  return findings;
+}
+
+// ========================================================================
+// Env Analyzer
+// ========================================================================
+const SECRET_PATTERNS = [
+  { pattern: /^(AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)$/i, name: 'AWS credential' },
+  { pattern: /^(OPENAI_API_KEY|ANTHROPIC_API_KEY|GOOGLE_AI_KEY)$/i, name: 'AI API key' },
+  { pattern: /^(DATABASE_URL|DB_PASSWORD|POSTGRES_PASSWORD)$/i, name: 'Database credential' },
+  { pattern: /^(STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET)$/i, name: 'Payment credential' },
+  { pattern: /^(GITHUB_TOKEN|GH_TOKEN|GITLAB_TOKEN)$/i, name: 'Git platform token' },
+  { pattern: /^(SLACK_TOKEN|SLACK_WEBHOOK_URL|DISCORD_TOKEN)$/i, name: 'Messaging platform token' },
+  { pattern: /^(SENDGRID_API_KEY|MAILGUN_API_KEY|SMTP_PASSWORD)$/i, name: 'Email service credential' },
+  { pattern: /^(TWILIO_AUTH_TOKEN|TWILIO_API_KEY)$/i, name: 'Telephony credential' },
+  { pattern: /_SECRET$|_TOKEN$|_KEY$|_PASSWORD$/i, name: 'Potential secret' },
+];
+
+function analyzeEnvVars(envVars) {
+  const findings = [];
+  let idx = 0;
+
+  for (const [key, value] of Object.entries(envVars)) {
+    let matched = false;
+    for (const sp of SECRET_PATTERNS) {
+      if (sp.pattern.test(key)) {
+        findings.push({
+          id: 'ENV-' + String(++idx).padStart(3, '0'),
+          severity: /PASSWORD|SECRET|CREDENTIAL/i.test(key) ? 'critical' : 'high',
+          category: 'secret-exposure',
+          title: sp.name + ' exposed: ' + key,
+          description: 'Environment variable "' + key + '" (' + sp.name + ') is accessible to the agent. If the agent is compromised via prompt injection or tool misuse, this credential can be exfiltrated.',
+          owaspMapping: 'ASI03',
+          remediation: 'Remove "' + key + '" from the agent\'s environment. Use a secrets manager with scoped, short-lived tokens instead.',
+        });
+        matched = true;
+        break;
+      }
+    }
+
+    // Check for hardcoded-looking values (long hex/base64 strings)
+    if (!matched && typeof value === 'string' && value.length > 20 && /^[A-Za-z0-9+/=_-]{20,}$/.test(value)) {
+      findings.push({
+        id: 'ENV-' + String(++idx).padStart(3, '0'),
+        severity: 'low',
+        category: 'potential-secret',
+        title: 'Potential secret in env var: ' + key,
+        description: 'Environment variable "' + key + '" contains a long encoded string that may be a secret or API key.',
+        owaspMapping: 'ASI03',
+        remediation: 'Review whether "' + key + '" contains sensitive data. If so, use a secrets manager.',
+      });
+    }
+  }
+
+  return findings;
+}
+
+// ========================================================================
+// Permission Analyzer
+// ========================================================================
+const SENSITIVE_PATHS = [
+  { pattern: /^\/etc\b/i, name: 'System config (/etc)', severity: 'critical' },
+  { pattern: /^\/root\b|^~\/\.ssh\b|\.ssh\b/i, name: 'SSH keys', severity: 'critical' },
+  { pattern: /\.env\b|\.env\./i, name: 'Environment files', severity: 'high' },
+  { pattern: /^\/var\/log\b/i, name: 'System logs', severity: 'medium' },
+  { pattern: /^\/proc\b|^\/sys\b/i, name: 'Kernel interfaces', severity: 'high' },
+  { pattern: /\.git\b/i, name: 'Git repository data', severity: 'medium' },
+  { pattern: /node_modules\b/i, name: 'Dependencies directory', severity: 'low' },
+  { pattern: /^\/$|^\/\*$/, name: 'Root filesystem', severity: 'critical' },
+];
+
+const DANGEROUS_CAPS_WITHOUT_APPROVAL = [
+  { cap: 'shell_execute', severity: 'critical', name: 'Shell execution' },
+  { cap: 'payment_process', severity: 'critical', name: 'Payment processing' },
+  { cap: 'file_delete', severity: 'high', name: 'File deletion' },
+  { cap: 'system_config', severity: 'high', name: 'System configuration' },
+  { cap: 'credential_access', severity: 'critical', name: 'Credential access' },
+];
+
+function analyzePermissions(tools, permissions) {
+  const findings = [];
+  let idx = 0;
+
+  // Check filesystem paths
+  if (permissions && permissions.fileSystemPaths) {
+    for (const path of permissions.fileSystemPaths) {
+      for (const sp of SENSITIVE_PATHS) {
+        if (sp.pattern.test(path)) {
+          findings.push({
+            id: 'PERM-' + String(++idx).padStart(3, '0'),
+            severity: sp.severity,
+            category: 'filesystem-exposure',
+            title: 'Access to ' + sp.name + ': ' + path,
+            description: 'Agent has access to "' + path + '" which includes ' + sp.name + '. This is a high-value target for data exfiltration or system compromise.',
+            owaspMapping: 'ASI03',
+            remediation: 'Restrict filesystem access to the minimum required paths. Remove access to "' + path + '".',
+          });
+          break;
+        }
+      }
+    }
+  }
+
+  // Check for dangerous capabilities without approval requirement
+  const allCaps = new Set(tools.flatMap(t => t.capabilities || []));
+  const approvalRequired = new Set(permissions && permissions.requireApproval ? permissions.requireApproval : []);
+
+  for (const check of DANGEROUS_CAPS_WITHOUT_APPROVAL) {
+    if (allCaps.has(check.cap) && !approvalRequired.has(check.cap)) {
+      findings.push({
+        id: 'PERM-' + String(++idx).padStart(3, '0'),
+        severity: check.severity,
+        category: 'missing-approval',
+        title: check.name + ' allowed without human approval',
+        description: 'The agent can perform ' + check.name.toLowerCase() + ' without requiring human approval. This is a high-risk capability that should require explicit authorization.',
+        owaspMapping: 'ASI09',
+        remediation: 'Add "' + check.cap + '" to the requireApproval list in permissions.',
+      });
+    }
+  }
+
+  // No permissions at all
+  if (!permissions) {
+    findings.push({
+      id: 'PERM-' + String(++idx).padStart(3, '0'),
+      severity: 'high',
+      category: 'no-permissions',
+      title: 'No permission boundaries configured',
+      description: 'The agent has no explicit permission boundaries. All tool capabilities are unrestricted.',
+      owaspMapping: 'ASI03',
+      remediation: 'Define explicit permissions including filesystem paths, network allowlists, and approval requirements.',
+    });
+  }
+
+  return findings;
+}
+
+// ========================================================================
+// Data Flow Builder
+// ========================================================================
+function buildDataFlows(config) {
+  const flows = [];
+  const tools = config.tools || [];
+  const servers = config.mcpServers || [];
+
+  for (const tool of tools) {
+    const caps = tool.capabilities || [];
+
+    if (caps.includes('file_read') && caps.includes('network_request')) {
+      flows.push({ source: 'Local Files', destination: 'External Network (' + tool.name + ')', dataType: 'File contents', risk: 'critical' });
+    }
+    if (caps.includes('credential_access') && caps.includes('network_request')) {
+      flows.push({ source: 'Credential Store', destination: 'External Network (' + tool.name + ')', dataType: 'Credentials', risk: 'critical' });
+    }
+    if (caps.includes('database_query') && caps.includes('network_request')) {
+      flows.push({ source: 'Database', destination: 'External Network (' + tool.name + ')', dataType: 'Query results', risk: 'high' });
+    }
+    if (caps.includes('user_data_access') && caps.includes('network_request')) {
+      flows.push({ source: 'User Data', destination: 'External Network (' + tool.name + ')', dataType: 'PII / User data', risk: 'high' });
+    }
+    if (caps.includes('shell_execute')) {
+      flows.push({ source: 'Agent', destination: 'System Shell (' + tool.name + ')', dataType: 'Commands', risk: 'high' });
+    }
+    if (caps.includes('email_send')) {
+      flows.push({ source: 'Agent', destination: 'Email (' + tool.name + ')', dataType: 'Messages', risk: 'medium' });
+    }
+    if (caps.includes('payment_process')) {
+      flows.push({ source: 'Agent', destination: 'Payment Processor (' + tool.name + ')', dataType: 'Transaction data', risk: 'critical' });
+    }
+    if (caps.includes('file_write')) {
+      flows.push({ source: 'Agent', destination: 'Local Filesystem (' + tool.name + ')', dataType: 'Written files', risk: 'medium' });
+    }
+    if (caps.includes('file_delete')) {
+      flows.push({ source: 'Agent', destination: 'Local Filesystem (' + tool.name + ')', dataType: 'Deletion commands', risk: 'high' });
+    }
+  }
+
+  for (const server of servers) {
+    if (server.env) {
+      const sensitiveKeys = Object.keys(server.env).filter(k => /key|secret|token|password|credential/i.test(k));
+      if (sensitiveKeys.length > 0) {
+        flows.push({ source: 'Agent Config', destination: 'MCP Server (' + server.name + ')', dataType: 'Secrets: ' + sensitiveKeys.join(', '), risk: 'high' });
+      }
+    }
+    if (server.transport === 'stdio') {
+      flows.push({ source: 'Agent', destination: 'MCP stdio (' + server.name + ')', dataType: 'Tool invocations (unauthenticated)', risk: 'medium' });
+    }
+  }
+
+  return flows;
+}
+
+// ========================================================================
+// Attack Surface Builder
+// ========================================================================
+function buildAttackSurface(config, findings) {
+  const tools = config.tools || [];
+  const capBreakdown = {};
+  const allCaps = new Set();
+
+  for (const tool of tools) {
+    for (const cap of (tool.capabilities || [])) {
+      capBreakdown[cap] = (capBreakdown[cap] || 0) + 1;
+      allCaps.add(cap);
+    }
+  }
+
+  const criticalPaths = [];
+  const critFindings = findings.filter(f => f.severity === 'critical');
+  for (const f of critFindings) {
+    criticalPaths.push(f.title);
+  }
+
+  const exposedEndpoints = [];
+  const servers = config.mcpServers || [];
+  for (const s of servers) {
+    if (s.url) exposedEndpoints.push(s.url);
+    if (s.command) exposedEndpoints.push('stdio://' + s.command);
+  }
+
+  return {
+    totalTools: tools.length,
+    capabilityBreakdown: capBreakdown,
+    criticalPaths,
+    exposedEndpoints,
+    dataFlows: buildDataFlows(config),
+  };
+}
+
+// ========================================================================
+// Full Scan
+// ========================================================================
+function scan(config) {
+  const allFindings = [];
+
+  if (config.tools && config.tools.length > 0) {
+    allFindings.push(...analyzeTools(config.tools));
+  }
+  if (config.mcpServers && config.mcpServers.length > 0) {
+    allFindings.push(...analyzeMCPServers(config.mcpServers));
+  }
+  if (config.envVars && Object.keys(config.envVars).length > 0) {
+    allFindings.push(...analyzeEnvVars(config.envVars));
+  }
+  allFindings.push(...analyzePermissions(config.tools || [], config.permissions));
+
+  // Sort by severity
+  const order = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+  allFindings.sort((a, b) => (order[a.severity] ?? 5) - (order[b.severity] ?? 5));
+
+  const riskScore = calculateRiskScore(allFindings);
+  const grade = calculateGrade(riskScore);
+  const attackSurface = buildAttackSurface(config, allFindings);
+
+  return {
+    agent: config.name || 'Unnamed Agent',
+    scanDate: new Date().toISOString(),
+    findings: allFindings,
+    riskScore,
+    grade,
+    attackSurface,
+  };
+}
+
+// ========================================================================
+// UI Rendering
+// ========================================================================
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function renderResults(result) {
+  const resultsEl = document.getElementById('results');
+  resultsEl.style.display = 'block';
+
+  // Grade badge
+  const color = gradeColor(result.grade);
+  const badge = document.getElementById('grade-badge');
+  badge.textContent = result.grade;
+  badge.style.color = color;
+  badge.style.borderColor = color;
+  badge.style.background = color + '18';
+
+  document.getElementById('agent-name').textContent = result.agent;
+  const scoreEl = document.getElementById('score-num');
+  scoreEl.textContent = result.riskScore;
+  scoreEl.style.color = color;
+
+  // Summary grid
+  const as = result.attackSurface;
+  const caps = Object.entries(as.capabilityBreakdown);
+  const severityCounts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+  for (const f of result.findings) { severityCounts[f.severity] = (severityCounts[f.severity] || 0) + 1; }
+
+  const summaryHtml =
+    '<div class="summary-card">' +
+      '<div class="label">Total Tools</div>' +
+      '<div class="value">' + as.totalTools + '</div>' +
+      '<div class="detail">' + caps.length + ' unique capabilities</div>' +
+    '</div>' +
+    '<div class="summary-card">' +
+      '<div class="label">Findings</div>' +
+      '<div class="value">' + result.findings.length + '</div>' +
+      '<div class="detail">' +
+        '<span style="color:var(--critical)">' + severityCounts.critical + ' critical</span> &middot; ' +
+        '<span style="color:var(--high)">' + severityCounts.high + ' high</span> &middot; ' +
+        '<span style="color:var(--medium)">' + severityCounts.medium + ' med</span> &middot; ' +
+        '<span style="color:var(--low)">' + severityCounts.low + ' low</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="summary-card">' +
+      '<div class="label">Critical Paths</div>' +
+      '<div class="value">' + as.criticalPaths.length + '</div>' +
+      '<div class="detail">' + (as.criticalPaths.length > 0 ? 'Exploitable attack chains found' : 'No critical chains found') + '</div>' +
+    '</div>' +
+    '<div class="summary-card">' +
+      '<div class="label">Data Flows</div>' +
+      '<div class="value">' + as.dataFlows.length + '</div>' +
+      '<div class="detail">' + as.exposedEndpoints.length + ' exposed endpoints</div>' +
+    '</div>';
+
+  document.getElementById('summary-grid').innerHTML = summaryHtml;
+
+  // Capability breakdown below summary
+  // (inject after summary grid but before findings - part of summary section)
+
+  // Findings
+  document.getElementById('finding-count').textContent = result.findings.length;
+  const findingsEl = document.getElementById('findings-list');
+
+  if (result.findings.length === 0) {
+    findingsEl.innerHTML = '<div class="no-findings">No findings. This configuration looks well-secured.</div>';
+  } else {
+    let html = '';
+    for (const f of result.findings) {
+      html += '<div class="finding-card" data-severity="' + f.severity + '">' +
+        '<div class="finding-header">' +
+          '<span class="severity-badge ' + f.severity + '">' + f.severity + '</span>' +
+          '<span class="finding-title">' + escapeHtml(f.title) + '</span>' +
+          '<span class="finding-id">' + escapeHtml(f.id) + '</span>' +
+        '</div>' +
+        '<div class="finding-desc">' + escapeHtml(f.description) + '</div>' +
+        '<div class="finding-meta">';
+      if (f.tool) {
+        html += '<span>Tool: <strong>' + escapeHtml(f.tool) + '</strong></span>';
+      }
+      html += '<span>Category: ' + escapeHtml(f.category) + '</span>';
+      if (f.owaspMapping) {
+        html += '<span class="owasp-tag">' + escapeHtml(f.owaspMapping) + ': ' + escapeHtml(getOwaspName(f.owaspMapping)) + '</span>';
+      }
+      html += '</div>' +
+        '<div class="finding-remediation"><strong>Remediation:</strong> ' + escapeHtml(f.remediation) + '</div>' +
+      '</div>';
+    }
+    findingsEl.innerHTML = html;
+  }
+
+  // Data flow diagram
+  const dfBox = document.getElementById('dataflow-box');
+  if (as.dataFlows.length === 0) {
+    dfBox.innerHTML = '<span style="color:var(--text-dim)">No data flows detected.</span>';
+  } else {
+    let dfHtml = '';
+    for (const df of as.dataFlows) {
+      const riskClass = 'df-risk-' + df.risk;
+      dfHtml += '<div class="dataflow-line">' +
+        '<span class="df-source">' + escapeHtml(df.source) + '</span>' +
+        ' <span class="df-arrow">---[</span>' +
+        '<span class="df-type">' + escapeHtml(df.dataType) + '</span>' +
+        '<span class="df-arrow">]--&gt;</span> ' +
+        '<span class="df-dest">' + escapeHtml(df.destination) + '</span>' +
+        '  <span class="' + riskClass + '">[' + df.risk.toUpperCase() + ']</span>' +
+      '</div>';
+    }
+    dfBox.innerHTML = dfHtml;
+  }
+
+  // Scroll to results
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ========================================================================
+// UI Actions
+// ========================================================================
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('error-msg').style.display = 'none';
+}
+
+function runScan() {
+  hideError();
+  const input = document.getElementById('config-input').value.trim();
+  if (!input) {
+    showError('Please paste an agent configuration JSON.');
+    return;
+  }
+
+  let config;
+  try {
+    config = JSON.parse(input);
+  } catch (e) {
+    showError('Invalid JSON: ' + e.message);
+    return;
+  }
+
+  if (!config.name) {
+    showError('Config must have a "name" field.');
+    return;
+  }
+  if (!config.tools || !Array.isArray(config.tools)) {
+    showError('Config must have a "tools" array.');
+    return;
+  }
+
+  try {
+    const result = scan(config);
+    renderResults(result);
+  } catch (e) {
+    showError('Analysis error: ' + e.message);
+  }
+}
+
+// ========================================================================
+// Example Configs
+// ========================================================================
+const DANGEROUS_EXAMPLE = {
+  "name": "DevOps Autopilot (DANGEROUS)",
+  "tools": [
+    {
+      "name": "super_shell",
+      "description": "Execute any shell command with network access",
+      "parameters": { "command": "string", "url": "string" },
+      "capabilities": ["shell_execute", "network_request", "file_read", "file_write", "file_delete"]
+    },
+    {
+      "name": "db_admin",
+      "description": "Run arbitrary SQL queries on any database",
+      "parameters": { "sql_query": "string", "host": "string" },
+      "capabilities": ["database_query", "network_request", "credential_access"]
+    },
+    {
+      "name": "payment_bot",
+      "description": "Process payments and run settlement scripts",
+      "parameters": { "code": "string", "amount": "number" },
+      "capabilities": ["payment_process", "code_execute", "network_request"]
+    },
+    {
+      "name": "config_manager",
+      "description": "Modify system configuration files",
+      "parameters": { "file_path": "string", "script": "string" },
+      "capabilities": ["system_config", "code_execute", "file_write"]
+    },
+    {
+      "name": "email_blaster",
+      "description": "Send emails to any address with attachments",
+      "parameters": { "file": "string" },
+      "capabilities": ["email_send", "file_read", "user_data_access"]
+    }
+  ],
+  "mcpServers": [
+    {
+      "name": "mcp-everything",
+      "command": "npx @modelcontextprotocol/server-everything",
+      "transport": "stdio",
+      "env": { "OPENAI_API_KEY": "sk-abc123", "DATABASE_PASSWORD": "hunter2" }
+    },
+    {
+      "name": "mcp-shell-server",
+      "command": "npx mcp-shell-server",
+      "transport": "stdio"
+    },
+    {
+      "name": "mcp-postgres",
+      "url": "http://internal-db:3000/mcp",
+      "transport": "sse",
+      "env": { "POSTGRES_PASSWORD": "admin123" }
+    }
+  ],
+  "envVars": {
+    "AWS_SECRET_ACCESS_KEY": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    "OPENAI_API_KEY": "sk-proj-abcdef123456",
+    "STRIPE_SECRET_KEY": "sk_live_abcdefghijklmnop",
+    "DATABASE_URL": "postgres://admin:password@prod-db:5432/main",
+    "GITHUB_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxx",
+    "SLACK_TOKEN": "xoxb-123456-abcdef",
+    "INTERNAL_SERVICE_ID": "svc_a8f3k29d1m4p7x2w"
+  },
+  "permissions": {
+    "fileSystemPaths": ["/", "/etc", "/root/.ssh", "/var/log", ".env", ".git", "/proc"],
+    "networkAllowList": ["*"],
+    "maxConcurrentTools": 10
+  }
+};
+
+const SAFE_EXAMPLE = {
+  "name": "Content Writer (Locked Down)",
+  "tools": [
+    {
+      "name": "read_docs",
+      "description": "Read approved documentation files",
+      "parameters": { "doc_id": "string" },
+      "capabilities": ["file_read"]
+    },
+    {
+      "name": "write_draft",
+      "description": "Write draft content to staging area",
+      "parameters": { "draft_id": "string", "content": "string" },
+      "capabilities": ["file_write"]
+    }
+  ],
+  "mcpServers": [
+    {
+      "name": "docs-server",
+      "url": "https://docs-api.internal:8443/mcp",
+      "transport": "http",
+      "tools": ["search_docs", "get_doc"]
+    }
+  ],
+  "envVars": {
+    "APP_ENV": "production",
+    "LOG_LEVEL": "info"
+  },
+  "permissions": {
+    "fileSystemPaths": ["/app/content/drafts"],
+    "networkAllowList": ["https://docs-api.internal:8443"],
+    "maxConcurrentTools": 2,
+    "requireApproval": ["file_delete", "shell_execute", "payment_process", "credential_access", "system_config"]
+  }
+};
+
+function loadDangerousExample() {
+  document.getElementById('config-input').value = JSON.stringify(DANGEROUS_EXAMPLE, null, 2);
+  hideError();
+  document.getElementById('results').style.display = 'none';
+}
+
+function loadSafeExample() {
+  document.getElementById('config-input').value = JSON.stringify(SAFE_EXAMPLE, null, 2);
+  hideError();
+  document.getElementById('results').style.display = 'none';
+}
+
+// Auto-load dangerous example and scan on page load
+loadDangerousExample();
+document.getElementById('scan-btn').click();
+</script>
+</body>
+</html>
