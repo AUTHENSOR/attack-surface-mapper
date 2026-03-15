@@ -1,5 +1,5 @@
 /**
- * Risk assessment rules — defines what patterns to look for and how
+ * Risk assessment rules -- defines what patterns to look for and how
  * to score them.
  */
 
@@ -145,7 +145,7 @@ export const SECRET_PATTERNS: readonly SecretPattern[] = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Secret value patterns — detect actual secret values in env vars
+// Secret value patterns -- detect actual secret values in env vars
 // ---------------------------------------------------------------------------
 
 export interface SecretValuePattern {
@@ -193,10 +193,10 @@ export const SENSITIVE_PATHS: readonly { path: string; description: string; seve
 // ---------------------------------------------------------------------------
 
 export const KNOWN_RISKY_MCP_SERVERS: readonly { pattern: RegExp; description: string; severity: Severity }[] = [
-  { pattern: /shell|exec|terminal|bash|cmd/i, description: 'Shell execution MCP server — grants arbitrary command execution', severity: 'critical' },
+  { pattern: /shell|exec|terminal|bash|cmd/i, description: 'Shell execution MCP server -- grants arbitrary command execution', severity: 'critical' },
   { pattern: /filesystem|fs-access|file-manager/i, description: 'Unrestricted filesystem MCP server', severity: 'high' },
-  { pattern: /database|sql|postgres|mysql|mongo/i, description: 'Database access MCP server — may allow arbitrary queries', severity: 'high' },
-  { pattern: /puppeteer|playwright|browser/i, description: 'Browser automation MCP server — SSRF and data scraping risk', severity: 'medium' },
+  { pattern: /database|sql|postgres|mysql|mongo/i, description: 'Database access MCP server -- may allow arbitrary queries', severity: 'high' },
+  { pattern: /puppeteer|playwright|browser/i, description: 'Browser automation MCP server -- SSRF and data scraping risk', severity: 'medium' },
   { pattern: /everything/i, description: '"Everything" server grants overly broad capabilities', severity: 'critical' },
 ] as const;
 

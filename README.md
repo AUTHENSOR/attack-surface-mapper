@@ -2,7 +2,7 @@
 
 **Map the attack surface of your AI agents.**
 
-A zero-dependency CLI tool and library that analyzes an AI agent's configuration — tools, MCP servers, environment variables, permissions — and maps out its security gaps. Think `nmap` for AI agent capabilities.
+A zero-dependency CLI tool and library that analyzes an AI agent's configuration -- tools, MCP servers, environment variables, permissions -- and maps out its security gaps. Think `nmap` for AI agent capabilities.
 
 ## Quick Start
 

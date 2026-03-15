@@ -27,7 +27,7 @@ export function analyzeNetwork(tools: ToolDefinition[], permissions?: Permission
         id: `NET-${String(++idx).padStart(3, '0')}`,
         severity: 'high',
         category: 'ssrf',
-        title: `${tool.name}: SSRF potential — accepts arbitrary URLs`,
+        title: `${tool.name}: SSRF potential -- accepts arbitrary URLs`,
         description: `Tool "${tool.name}" accepts user-controlled URLs. An attacker could use prompt injection to make the agent send requests to internal services (SSRF).`,
         tool: tool.name,
         owaspMapping: 'ASI01',
