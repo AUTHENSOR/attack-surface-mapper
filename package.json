@@ -1,0 +1,30 @@
+{
+  "name": "@15rl/attack-surface-mapper",
+  "version": "0.1.0",
+  "description": "Map the attack surface of your AI agents. Enumerates tools, capabilities, and security gaps.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "asm": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "ai-safety",
+    "attack-surface",
+    "security-scanner",
+    "mcp",
+    "agent-security",
+    "owasp",
+    "sarif",
+    "vulnerability-scanner"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AUTHENSOR/attack-surface-mapper.git"
+  }
+}
