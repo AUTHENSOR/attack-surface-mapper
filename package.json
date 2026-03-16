@@ -26,5 +26,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/AUTHENSOR/attack-surface-mapper.git"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3"
   }
 }

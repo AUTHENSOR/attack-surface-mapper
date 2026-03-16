@@ -61,5 +61,30 @@ export function formatTerminal(result: ScanResult): string {
     lines.push('');
   }
 
+  // EU AI Act Compliance
+  if (result.compliance) {
+    const c = result.compliance;
+    const statusColor = c.overallStatus === 'compliant' ? GREEN :
+      c.overallStatus === 'partial' ? YELLOW : RED;
+    const statusLabel = c.overallStatus === 'compliant' ? 'COMPLIANT' :
+      c.overallStatus === 'partial' ? 'PARTIAL' : 'NON-COMPLIANT';
+
+    lines.push(`${BOLD}EU AI Act Compliance${RESET}`);
+    lines.push(`  Status: ${statusColor}${BOLD}${statusLabel}${RESET}`);
+    lines.push(`  Deadline: ${c.deadline}`);
+    lines.push(`  Articles: ${c.passCount} pass, ${c.warningCount} warning, ${c.failCount} fail`);
+    lines.push('');
+
+    for (const req of c.requirements) {
+      const rc = req.status === 'pass' ? GREEN : req.status === 'warning' ? YELLOW : RED;
+      const icon = req.status === 'pass' ? 'PASS' : req.status === 'warning' ? 'WARN' : 'FAIL';
+      lines.push(`  ${rc}${icon}${RESET} ${BOLD}${req.article}${RESET}: ${req.title}`);
+      for (const finding of req.findings) {
+        lines.push(`    ${DIM}${finding}${RESET}`);
+      }
+      lines.push('');
+    }
+  }
+
   return lines.join('\n');
 }

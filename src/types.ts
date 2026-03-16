@@ -77,4 +77,5 @@ export interface ScanResult {
   riskScore: number;
   grade: string;
   attackSurface: AttackSurface;
+  compliance?: import('./risk/eu-ai-act.js').ComplianceReport;
 }

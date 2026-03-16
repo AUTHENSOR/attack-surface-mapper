@@ -5,6 +5,7 @@ import { analyzeEnvVars } from './analyzers/env-analyzer.js';
 import { analyzeNetwork } from './analyzers/network-analyzer.js';
 import { analyzePermissions } from './analyzers/permission-analyzer.js';
 import { calculateRiskScore, calculateGrade } from './risk/scorer.js';
+import { assessCompliance, type ComplianceReport } from './risk/eu-ai-act.js';
 
 export class AttackSurfaceScanner {
   scan(config: AgentConfig): ScanResult {
@@ -41,6 +42,10 @@ export class AttackSurfaceScanner {
     // Build attack surface summary
     const attackSurface = this.buildAttackSurface(config, dataFlows);
 
+    // EU AI Act compliance assessment
+    const findingCategories = deduped.map((f) => f.category);
+    const compliance = assessCompliance(findingCategories);
+
     return {
       agent: config.name,
       scanDate: new Date().toISOString(),
@@ -51,6 +56,7 @@ export class AttackSurfaceScanner {
       riskScore,
       grade,
       attackSurface,
+      compliance,
     };
   }
 
